@@ -55,39 +55,25 @@ fn eval(expr: &Expression) -> Number {
 }
 
 fn apply(op: &Operator, args: &Vec<Expression>) -> Number {
-    //Evaluate the arguments first, then reduce
-    //There must be a nicer way to do this, but
-    //I don't know how to wrestle with rust's closure
-    //bullshit well enough.
+    //Evaluate all but the first part of the paren expression
+    let iter = args.iter().skip(1).map(|expr| eval(expr));
+
+    //Evaluate the first expression, use it to perform the correct operation
     match op {
-        Operator::Add => args
-            .iter()
-            .skip(1)
-            .map(|expr| eval(expr))
-            .fold(eval(&args[0]), |x, y| x + y),
-        Operator::Sub => args
-            .iter()
-            .skip(1)
-            .map(|expr| eval(expr))
-            .fold(eval(&args[0]), |x, y| x - y),
-        Operator::Mul => args
-            .iter()
-            .skip(1)
-            .map(|expr| eval(expr))
-            .fold(eval(&args[0]), |x, y| x * y),
-        Operator::Div => args
-            .iter()
-            .skip(1)
-            .map(|expr| eval(expr))
-            .fold(eval(&args[0]), |x, y| x / y),
+        Operator::Add => iter.fold(eval(&args[0]), |x, y| x + y),
+        Operator::Sub => iter.fold(eval(&args[0]), |x, y| x - y),
+        Operator::Mul => iter.fold(eval(&args[0]), |x, y| x * y),
+        Operator::Div => iter.fold(eval(&args[0]), |x, y| x / y),
     }
 }
 
 fn parse_line(s: &mut String) -> Result<Vec<Expression>, String> {
-    //Null terminator to let parsing end. This isn't very neat
+    //Null terminator to let parsing end. This doesn't seem like the correct method...
     s.push(char::from(0));
+
     match line(s.as_bytes()) {
         Ok((_, vec)) => Ok(vec),
+
         Err(err) => Err(match err {
             nom::Err::Incomplete(_) => String::from("Incomplete"),
             nom::Err::Error(_) => String::from("Error!"),
