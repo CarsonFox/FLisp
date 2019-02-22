@@ -1,9 +1,12 @@
-//Keep things generic, maybe we add multiple precision later
-//use std::ops::{AddAssign, MulAssign};
+use std::fmt;
+use std::ops::{Add, Div, Mul, Sub};
 
 extern crate nom;
 
-use nom::{alt, char, do_parse, is_digit, multispace0, named, opt, take_while1, ws, parse_to, flat_map, recognize, preceded};
+use nom::{
+    alt, char, do_parse, flat_map, is_digit, multispace0, named, opt, parse_to, preceded,
+    recognize, take_while1, ws,
+};
 
 extern crate rustyline;
 
@@ -44,40 +47,34 @@ fn main() {
     }
 }
 
-//named!(float <&[u8], f32>, flat_map!(
-//    recognize!(
-//        do_parse!(
-//            opt!(char!('-')) >>
-//            take_while1!(is_digit) >>
-//            char!('.') >>
-//            take_while1!(is_digit) >>
-//            ()
-//        )),
-//    parse_to!(f32)));
-
-fn eval(expr: &Expression) -> i32 {
+fn eval(expr: &Expression) -> Number {
     match expr {
-        Expression::Number(x) => *x,
         Expression::Application(op, args) => apply(op, args),
+        Expression::Numeric(num) => *num,
     }
 }
 
-fn apply(op: &Operator, args: &Vec<Expression>) -> i32 {
+fn apply(op: &Operator, args: &Vec<Expression>) -> Number {
     //Evaluate the arguments first, then reduce
     //There must be a nicer way to do this, but
     //I don't know how to wrestle with rust's closure
     //bullshit well enough.
     match op {
-        Operator::Add => args.iter().map(|expr| eval(expr)).fold(0, |x, y| x + y),
-        Operator::Sub => {
-            //Subtraction and division must start with the
-            //first argument, instead of the identity.
-            args.iter()
-                .skip(1)
-                .map(|expr| eval(expr))
-                .fold(eval(&args[0]), |x, y| x - y)
-        }
-        Operator::Mul => args.iter().map(|expr| eval(expr)).fold(1, |x, y| x * y),
+        Operator::Add => args
+            .iter()
+            .skip(1)
+            .map(|expr| eval(expr))
+            .fold(eval(&args[0]), |x, y| x + y),
+        Operator::Sub => args
+            .iter()
+            .skip(1)
+            .map(|expr| eval(expr))
+            .fold(eval(&args[0]), |x, y| x - y),
+        Operator::Mul => args
+            .iter()
+            .skip(1)
+            .map(|expr| eval(expr))
+            .fold(eval(&args[0]), |x, y| x * y),
         Operator::Div => args
             .iter()
             .skip(1)
@@ -103,12 +100,96 @@ named!(line <&[u8], Vec<Expression> >, ws!(many0!(expression)));
 
 #[derive(Debug, PartialEq, Clone)]
 enum Expression {
-    Number(i32),
+    Numeric(Number),
     Application(Operator, Vec<Expression>),
 }
 
+#[derive(Debug, PartialEq, Copy, Clone)]
+enum Number {
+    Integer(i32),
+    Float(f32),
+}
+
+impl Add for Number {
+    type Output = Number;
+
+    fn add(self, other: Number) -> Number {
+        match self {
+            Number::Float(x) => match other {
+                Number::Float(y) => Number::Float(x + y),
+                Number::Integer(y) => Number::Float(x + y as f32),
+            },
+            Number::Integer(x) => match other {
+                Number::Float(y) => Number::Float(x as f32 + y),
+                Number::Integer(y) => Number::Integer(x + y),
+            },
+        }
+    }
+}
+
+impl Sub for Number {
+    type Output = Number;
+
+    fn sub(self, other: Number) -> Number {
+        match self {
+            Number::Float(x) => match other {
+                Number::Float(y) => Number::Float(x - y),
+                Number::Integer(y) => Number::Float(x - y as f32),
+            },
+            Number::Integer(x) => match other {
+                Number::Float(y) => Number::Float(x as f32 - y),
+                Number::Integer(y) => Number::Integer(x - y),
+            },
+        }
+    }
+}
+
+impl Mul for Number {
+    type Output = Number;
+
+    fn mul(self, other: Number) -> Number {
+        match self {
+            Number::Float(x) => match other {
+                Number::Float(y) => Number::Float(x * y),
+                Number::Integer(y) => Number::Float(x * y as f32),
+            },
+            Number::Integer(x) => match other {
+                Number::Float(y) => Number::Float(x as f32 * y),
+                Number::Integer(y) => Number::Integer(x * y),
+            },
+        }
+    }
+}
+
+impl Div for Number {
+    type Output = Number;
+
+    fn div(self, other: Number) -> Number {
+        match self {
+            Number::Float(x) => match other {
+                Number::Float(y) => Number::Float(x / y),
+                Number::Integer(y) => Number::Float(x / y as f32),
+            },
+            Number::Integer(x) => match other {
+                Number::Float(y) => Number::Float(x as f32 / y),
+                Number::Integer(y) => Number::Integer(x / y),
+            },
+        }
+    }
+}
+
+impl fmt::Display for Number {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Number::Integer(x) => write!(f, "{}", x),
+            Number::Float(x) => write!(f, "{}", x),
+        }
+    }
+}
+
 named!(expression <&[u8], Expression>, alt!(
-    integer => { |x| Expression::Number(x) } |
+    float => { |x| Expression::Numeric(Number::Float(x)) } |
+    integer => { |x| Expression::Numeric(Number::Integer(x)) } |
     do_parse!(
         char!('(') >>
         multispace0 >>
@@ -134,48 +215,20 @@ named!(operator <&[u8], Operator>, alt!(
     char!('/') => { |_| Operator::Div }
 ));
 
+named!(float <&[u8], f32>, flat_map!(
+    recognize!(
+        do_parse!(
+            opt!(char!('-')) >>
+            take_while1!(is_digit) >>
+            char!('.') >>
+            take_while1!(is_digit) >>
+            ()
+        )),
+    parse_to!(f32)));
+
 named!(integer <&[u8], i32>, flat_map!(
     recognize!(
         preceded!(
             opt!(char!('-')),
             take_while1!(is_digit))),
     parse_to!(i32)));
-
-#[test]
-fn test_expression() {
-    assert_eq!(expression(b"22 "), Ok((&b" "[..], Expression::Number(22))));
-    assert_eq!(
-        expression(b"-12 "),
-        Ok((&b" "[..], Expression::Number(-12)))
-    );
-    assert_eq!(
-        expression(b"( + 2 3 )"),
-        Ok((
-            &[][..],
-            Expression::Application(
-                Operator::Add,
-                vec![Expression::Number(2), Expression::Number(3)]
-            )
-        ))
-    );
-}
-
-#[test]
-fn test_operator() {
-    assert_eq!(operator(b"+"), Ok((&[][..], Operator::Add)));
-    assert_eq!(operator(b"-"), Ok((&[][..], Operator::Sub)));
-    assert_eq!(operator(b"*"), Ok((&[][..], Operator::Mul)));
-    assert_eq!(operator(b"/"), Ok((&[][..], Operator::Div)));
-
-    assert!(operator(b"a").is_err());
-    assert!(operator(b"").is_err());
-}
-
-#[test]
-fn test_integer() {
-    assert_eq!(integer(b"-123456789 "), Ok((&b" "[..], -123456789)));
-    assert_eq!(integer(b"123456789)"), Ok((&b")"[..], 123456789)));
-
-    assert!(integer(b"a1").is_err());
-    assert!(integer(b"12").is_err());
-}
