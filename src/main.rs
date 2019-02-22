@@ -1,9 +1,9 @@
 //Keep things generic, maybe we add multiple precision later
-use std::ops::{AddAssign, MulAssign};
+//use std::ops::{AddAssign, MulAssign};
 
 extern crate nom;
 
-use nom::{alt, char, do_parse, is_digit, map, multispace0, named, opt, take_while1, ws};
+use nom::{alt, char, do_parse, is_digit, multispace0, named, opt, take_while1, ws, parse_to, flat_map, recognize, preceded};
 
 extern crate rustyline;
 
@@ -43,6 +43,17 @@ fn main() {
         }
     }
 }
+
+//named!(float <&[u8], f32>, flat_map!(
+//    recognize!(
+//        do_parse!(
+//            opt!(char!('-')) >>
+//            take_while1!(is_digit) >>
+//            char!('.') >>
+//            take_while1!(is_digit) >>
+//            ()
+//        )),
+//    parse_to!(f32)));
 
 fn eval(expr: &Expression) -> i32 {
     match expr {
@@ -123,27 +134,12 @@ named!(operator <&[u8], Operator>, alt!(
     char!('/') => { |_| Operator::Div }
 ));
 
-//TODO: check for bad numbers, float support
-named!(integer <&[u8], i32>, do_parse!(
-    pref: opt!(char!('-')) >>
-    num: int_no_prefix >>
-    (if pref.is_some() {-num} else {num})
-));
-
-named!(int_no_prefix <&[u8], i32>, map!(take_while1!(is_digit), buf_to_int));
-
-//Lifted from nom tutorial, parses a sequence of digits as a number
-fn buf_to_int<T>(s: &[u8]) -> T
-where
-    T: AddAssign + MulAssign + From<u8>,
-{
-    let mut sum = T::from(0);
-    for digit in s {
-        sum *= T::from(10);
-        sum += T::from(*digit - b'0');
-    }
-    sum
-}
+named!(integer <&[u8], i32>, flat_map!(
+    recognize!(
+        preceded!(
+            opt!(char!('-')),
+            take_while1!(is_digit))),
+    parse_to!(i32)));
 
 #[test]
 fn test_expression() {
