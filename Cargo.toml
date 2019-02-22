@@ -1,0 +1,9 @@
+[package]
+name = "lisp"
+version = "0.1.0"
+authors = ["Carson Fox <carson.fox@aggiemail.usu.edu>"]
+edition = "2018"
+
+[dependencies]
+rustyline = "3.0.0"
+nom = "4.2.0"
