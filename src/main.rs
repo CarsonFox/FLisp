@@ -3,10 +3,7 @@ use std::ops::{Add, Div, Mul, Sub};
 
 extern crate nom;
 
-use nom::{
-    alt, char, do_parse, flat_map, is_digit, multispace0, named, opt, parse_to, preceded,
-    recognize, take_while1, ws,
-};
+use nom::{alt, char, do_parse, flat_map, multispace0, named, parse_to, take_till1, ws};
 
 extern crate rustyline;
 
@@ -27,7 +24,7 @@ fn main() {
                         }
                     }
                     Err(err) => {
-                        eprintln!("{}", err);
+                        println!("{}", err);
                     }
                 }
             }
@@ -82,7 +79,7 @@ fn parse_line(s: &mut String) -> Result<Vec<Expression>, String> {
     }
 }
 
-named!(line <&[u8], Vec<Expression> >, ws!(many0!(expression)));
+named!(line <&[u8], Vec<Expression> >, ws!(many1!(expression)));
 
 #[derive(Debug, PartialEq, Clone)]
 enum Expression {
@@ -202,19 +199,15 @@ named!(operator <&[u8], Operator>, alt!(
 ));
 
 named!(float <&[u8], f32>, flat_map!(
-    recognize!(
-        do_parse!(
-            opt!(char!('-')) >>
-            take_while1!(is_digit) >>
-            char!('.') >>
-            take_while1!(is_digit) >>
-            ()
-        )),
+    token,
     parse_to!(f32)));
 
 named!(integer <&[u8], i32>, flat_map!(
-    recognize!(
-        preceded!(
-            opt!(char!('-')),
-            take_while1!(is_digit))),
+    token,
     parse_to!(i32)));
+
+named!(token, take_till1!(is_seperator));
+
+fn is_seperator(c: u8) -> bool {
+    c.is_ascii_whitespace() || c == b')' || c == b'(' || c == 0
+}
