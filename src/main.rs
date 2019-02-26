@@ -87,6 +87,54 @@ enum Expression {
     Application(Operator, Vec<Expression>),
 }
 
+named!(expression <&[u8], Expression>, alt!(
+    float => { |x| Expression::Numeric(Number::Float(x)) } |
+    integer => { |x| Expression::Numeric(Number::Integer(x)) } |
+    do_parse!(
+        char!('(') >>
+        multispace0 >>
+        op: operator >>
+        expr_list: ws!(many0!(expression)) >>
+        char!(')') >>
+        (Expression::Application(op, expr_list))
+    )
+));
+
+#[derive(Debug, PartialEq, Copy, Clone)]
+enum Operator {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+named!(operator <&[u8], Operator>, alt!(
+    char!('+') => { |_| Operator::Add } |
+    char!('-') => { |_| Operator::Sub } |
+    char!('*') => { |_| Operator::Mul } |
+    char!('/') => { |_| Operator::Div }
+));
+
+named!(atom <&[u8], Atom>, alt!(
+    float => { |x| Atom::Numeric(Number::Float(x)) } |
+    integer => { |x| Atom::Numeric(Number::Integer(x)) } |
+    token => { |x: &[u8]| Atom::Identifier(String::from_utf8(x.to_vec()).unwrap()) }
+));
+
+named!(float <&[u8], f32>, flat_map!(
+    token,
+    parse_to!(f32)));
+
+named!(integer <&[u8], i32>, flat_map!(
+    token,
+    parse_to!(i32)));
+
+#[derive(Debug, PartialEq, Clone)]
+enum Atom {
+    Numeric(Number),
+    Identifier(String),
+}
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum Number {
     Integer(i32),
@@ -169,42 +217,6 @@ impl fmt::Display for Number {
         }
     }
 }
-
-named!(expression <&[u8], Expression>, alt!(
-    float => { |x| Expression::Numeric(Number::Float(x)) } |
-    integer => { |x| Expression::Numeric(Number::Integer(x)) } |
-    do_parse!(
-        char!('(') >>
-        multispace0 >>
-        op: operator >>
-        expr_list: ws!(many0!(expression)) >>
-        char!(')') >>
-        (Expression::Application(op, expr_list))
-    )
-));
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-enum Operator {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
-
-named!(operator <&[u8], Operator>, alt!(
-    char!('+') => { |_| Operator::Add } |
-    char!('-') => { |_| Operator::Sub } |
-    char!('*') => { |_| Operator::Mul } |
-    char!('/') => { |_| Operator::Div }
-));
-
-named!(float <&[u8], f32>, flat_map!(
-    token,
-    parse_to!(f32)));
-
-named!(integer <&[u8], i32>, flat_map!(
-    token,
-    parse_to!(i32)));
 
 named!(token, take_till1!(is_seperator));
 
