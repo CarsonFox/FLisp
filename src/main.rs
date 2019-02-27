@@ -49,6 +49,11 @@ fn main() {
     }
 }
 
+named!(skip_whitespace <&[u8], ()>, do_parse!(
+    multispace0 >>
+    (())
+));
+
 named!(expression <&[u8], Expression>, alt!(
     atom => { |a| Expression::Atomic(a) } |
     sexpr => { |e| Expression::SExpr(e) }
@@ -175,9 +180,4 @@ named!(token, take_till1!(is_seperator));
 //Should play well with nom's manyX! family of macros.
 fn is_seperator(c: u8) -> bool {
     c.is_ascii_whitespace() || c == b')' || c == b'(' || c == 0
-}
-
-//Adds the '.' as a separator for float parsing
-fn is_sep_float(c: u8) -> bool {
-    is_seperator(c) || c == b'.'
 }
