@@ -3,7 +3,7 @@ use std::ops::{Add, Div, Mul, Sub};
 
 extern crate nom;
 
-use nom::{alt, char, do_parse, flat_map, multispace0, named, parse_to, take_till1, ws};
+use nom::{alt, char, delimited, do_parse, flat_map, multispace0, named, parse_to, take_till1, ws};
 
 extern crate rustyline;
 
@@ -11,22 +11,25 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 fn main() {
+    let _ = dbg!(expression(&b"(+ 3 2) "[..]));
+    return;
+
     let mut ed = Editor::<()>::new();
     loop {
         match ed.readline(">> ") {
             Ok(mut line) => {
                 ed.add_history_entry(line.as_ref());
-
-                match parse_line(&mut line) {
-                    Ok(vec) => {
-                        for expr in vec.iter() {
-                            println!("{}", eval(expr));
-                        }
-                    }
-                    Err(err) => {
-                        println!("{}", err);
-                    }
-                }
+                println!("{}", line);
+                //                match parse_line(&mut line) {
+                //                    Ok(vec) => {
+                //                        for expr in vec.iter() {
+                //                            println!("{}", eval(expr));
+                //                        }
+                //                    }
+                //                    Err(err) => {
+                //                        println!("{}", err);
+                //                    }
+                //                }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("Encountered ^C");
@@ -44,81 +47,27 @@ fn main() {
     }
 }
 
-fn eval(expr: &Expression) -> Number {
-    match expr {
-        Expression::Application(op, args) => apply(op, args),
-        Expression::Numeric(num) => *num,
-    }
-}
+named!(expression <&[u8], Expression>, alt!(
+    atom => { |a| Expression::Atomic(a) } |
+    sexpr => { |e| Expression::SExpr(e) }
+));
 
-fn apply(op: &Operator, args: &Vec<Expression>) -> Number {
-    //Evaluate all but the first part of the paren expression
-    let iter = args.iter().skip(1).map(|expr| eval(expr));
-
-    //Evaluate the first expression, use it to perform the correct operation
-    match op {
-        Operator::Add => iter.fold(eval(&args[0]), |x, y| x + y),
-        Operator::Sub => iter.fold(eval(&args[0]), |x, y| x - y),
-        Operator::Mul => iter.fold(eval(&args[0]), |x, y| x * y),
-        Operator::Div => iter.fold(eval(&args[0]), |x, y| x / y),
-    }
-}
-
-fn parse_line(s: &mut String) -> Result<Vec<Expression>, String> {
-    //Null terminator to let parsing end. This doesn't seem like the correct method...
-    s.push(char::from(0));
-
-    match line(s.as_bytes()) {
-        Ok((_, vec)) => Ok(vec),
-
-        Err(err) => Err(match err {
-            nom::Err::Incomplete(_) => String::from("Incomplete"),
-            nom::Err::Error(_) => String::from("Error!"),
-            nom::Err::Failure(_) => String::from("Failure!"),
-        }),
-    }
-}
-
-named!(line <&[u8], Vec<Expression> >, ws!(many1!(expression)));
+named!(sexpr <&[u8], Vec<Expression> >, delimited!(
+    char!('('),
+    ws!(many1!(expression)),
+    char!(')')
+));
 
 #[derive(Debug, PartialEq, Clone)]
 enum Expression {
-    Numeric(Number),
-    Application(Operator, Vec<Expression>),
+    Atomic(Atom),
+    SExpr(Vec<Expression>),
 }
-
-named!(expression <&[u8], Expression>, alt!(
-    float => { |x| Expression::Numeric(Number::Float(x)) } |
-    integer => { |x| Expression::Numeric(Number::Integer(x)) } |
-    do_parse!(
-        char!('(') >>
-        multispace0 >>
-        op: operator >>
-        expr_list: ws!(many0!(expression)) >>
-        char!(')') >>
-        (Expression::Application(op, expr_list))
-    )
-));
-
-#[derive(Debug, PartialEq, Copy, Clone)]
-enum Operator {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
-
-named!(operator <&[u8], Operator>, alt!(
-    char!('+') => { |_| Operator::Add } |
-    char!('-') => { |_| Operator::Sub } |
-    char!('*') => { |_| Operator::Mul } |
-    char!('/') => { |_| Operator::Div }
-));
 
 named!(atom <&[u8], Atom>, alt!(
-    float => { |x| Atom::Numeric(Number::Float(x)) } |
+    float   => { |x| Atom::Numeric(Number::Float(x)) } |
     integer => { |x| Atom::Numeric(Number::Integer(x)) } |
-    token => { |x: &[u8]| Atom::Identifier(String::from_utf8(x.to_vec()).unwrap()) }
+    token   => { |x: &[u8]| Atom::Identifier(String::from_utf8(x.to_vec()).unwrap()) }
 ));
 
 named!(float <&[u8], f32>, flat_map!(
@@ -220,6 +169,13 @@ impl fmt::Display for Number {
 
 named!(token, take_till1!(is_seperator));
 
+//Detects seperator characters, including null-terminator.
+//Should play well with nom's manyX! family of macros.
 fn is_seperator(c: u8) -> bool {
     c.is_ascii_whitespace() || c == b')' || c == b'(' || c == 0
+}
+
+//Adds the '.' as a separator for float parsing
+fn is_sep_float(c: u8) -> bool {
+    is_seperator(c) || c == b'.'
 }
