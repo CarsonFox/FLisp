@@ -11,7 +11,9 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 fn main() {
-    let _ = dbg!(expression(&b"(+ 3 2) "[..]));
+    let mut string = String::from_utf8(b"(+ ".to_vec()).unwrap();
+    string.push(char::from(0));
+    let _ = dbg!(expression(string.as_bytes()));
     return;
 
     let mut ed = Editor::<()>::new();
@@ -65,8 +67,8 @@ enum Expression {
 }
 
 named!(atom <&[u8], Atom>, alt!(
-    float   => { |x| Atom::Numeric(Number::Float(x)) } |
     integer => { |x| Atom::Numeric(Number::Integer(x)) } |
+    float   => { |x| Atom::Numeric(Number::Float(x)) } |
     token   => { |x: &[u8]| Atom::Identifier(String::from_utf8(x.to_vec()).unwrap()) }
 ));
 
