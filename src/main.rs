@@ -3,7 +3,11 @@ use std::ops::{Add, Div, Mul, Sub};
 
 extern crate nom;
 
-use nom::{alt, char, delimited, do_parse, flat_map, multispace0, named, parse_to, take_till1, ws};
+#[allow(unused_imports)]
+use nom::{
+    alt, char, delimited, do_parse, flat_map, multispace0, named, parse_to, take_till1,
+    take_while1, ws,
+};
 
 extern crate rustyline;
 
@@ -11,27 +15,14 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 fn main() {
-    let mut string = String::from_utf8(b"(+ ".to_vec()).unwrap();
-    string.push(char::from(0));
-    let _ = dbg!(expression(string.as_bytes()));
-    return;
-
     let mut ed = Editor::<()>::new();
     loop {
         match ed.readline(">> ") {
             Ok(mut line) => {
                 ed.add_history_entry(line.as_ref());
-                println!("{}", line);
-                //                match parse_line(&mut line) {
-                //                    Ok(vec) => {
-                //                        for expr in vec.iter() {
-                //                            println!("{}", eval(expr));
-                //                        }
-                //                    }
-                //                    Err(err) => {
-                //                        println!("{}", err);
-                //                    }
-                //                }
+
+                line.push(char::from(0));
+                let _ = dbg!(expression(&line));
             }
             Err(ReadlineError::Interrupted) => {
                 println!("Encountered ^C");
@@ -49,17 +40,17 @@ fn main() {
     }
 }
 
-named!(skip_whitespace <&[u8], ()>, do_parse!(
-    multispace0 >>
-    (())
-));
+//named!(skip_whitespace <&[u8], ()>, do_parse!(
+//    multispace0 >>
+//    (())
+//));
 
-named!(expression <&[u8], Expression>, alt!(
+named!(expression <&str, Expression>, alt!(
     atom => { |a| Expression::Atomic(a) } |
     sexpr => { |e| Expression::SExpr(e) }
 ));
 
-named!(sexpr <&[u8], Vec<Expression> >, delimited!(
+named!(sexpr <&str, Vec<Expression> >, delimited!(
     char!('('),
     ws!(many1!(expression)),
     char!(')')
@@ -71,19 +62,22 @@ enum Expression {
     SExpr(Vec<Expression>),
 }
 
-named!(atom <&[u8], Atom>, alt!(
+named!(atom <&str, Atom>, alt!(
     integer => { |x| Atom::Numeric(Number::Integer(x)) } |
     float   => { |x| Atom::Numeric(Number::Float(x)) } |
-    token   => { |x: &[u8]| Atom::Identifier(String::from_utf8(x.to_vec()).unwrap()) }
+    token   => { |x: &str| Atom::Identifier(String::from(x)) }
 ));
 
-named!(float <&[u8], f32>, flat_map!(
+named!(integer <&str, i32>, flat_map!(
+    token,
+    parse_to!(i32)));
+
+named!(float <&str, f32>, flat_map!(
     token,
     parse_to!(f32)));
 
-named!(integer <&[u8], i32>, flat_map!(
-    token,
-    parse_to!(i32)));
+named!(token <&str, &str>, take_till1!(
+    is_seperator));
 
 #[derive(Debug, PartialEq, Clone)]
 enum Atom {
@@ -174,10 +168,8 @@ impl fmt::Display for Number {
     }
 }
 
-named!(token, take_till1!(is_seperator));
-
 //Detects seperator characters, including null-terminator.
 //Should play well with nom's manyX! family of macros.
-fn is_seperator(c: u8) -> bool {
-    c.is_ascii_whitespace() || c == b')' || c == b'(' || c == 0
+fn is_seperator(c: char) -> bool {
+    c.is_whitespace() || c == ')' || c == '(' || c == char::from(0)
 }
