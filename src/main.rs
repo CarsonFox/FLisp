@@ -5,7 +5,7 @@ extern crate nom;
 
 #[allow(unused_imports)]
 use nom::{
-    alt, char, delimited, do_parse, flat_map, multispace0, named, parse_to, take_till1,
+    alt, char, delimited, do_parse, flat_map, multispace0, named, parse_to, tag, take_till1,
     take_while1, ws,
 };
 
@@ -14,15 +14,15 @@ extern crate rustyline;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
+const NULL: char = char::from(0);
+
 fn main() {
     let mut ed = Editor::<()>::new();
     loop {
         match ed.readline(">> ") {
-            Ok(mut line) => {
+            Ok(line) => {
                 ed.add_history_entry(line.as_ref());
-
-                line.push(char::from(0));
-                let _ = dbg!(expression(&line));
+                let _ = dbg!(parse_repl_line(line));
             }
             Err(ReadlineError::Interrupted) => {
                 println!("Encountered ^C");
@@ -40,10 +40,39 @@ fn main() {
     }
 }
 
-//named!(skip_whitespace <&[u8], ()>, do_parse!(
-//    multispace0 >>
-//    (())
-//));
+fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
+    //Needs to be null-terminated to play well with nom
+    line.push(NULL);
+
+    let mut slice = line.trim_start();
+    let mut expr_vec = Vec::new();
+
+    loop {
+        //The end of the line has been reached
+        if slice.starts_with(NULL) {
+            return Ok(expr_vec);
+        }
+
+        match expression(slice) {
+            Ok((remainder, expr)) => {
+                expr_vec.push(expr);
+                slice = remainder.trim_start();
+            }
+            Err(nom::Err::Incomplete(_)) => {
+                return Err(format!(
+                    "Incomplete input: {}",
+                    slice.trim_end_matches(NULL)
+                ));
+            }
+            Err(_) => {
+                return Err(format!(
+                    "Error parsing: {}",
+                    slice.trim_end_matches(NULL)
+                ));
+            }
+        }
+    }
+}
 
 named!(expression <&str, Expression>, alt!(
     atom => { |a| Expression::Atomic(a) } |
@@ -82,6 +111,7 @@ named!(token <&str, &str>, take_till1!(
 #[derive(Debug, PartialEq, Clone)]
 enum Atom {
     Numeric(Number),
+    //TODO: Maybe change this to &str? Would need to do lifetime stuff though
     Identifier(String),
 }
 
@@ -171,5 +201,5 @@ impl fmt::Display for Number {
 //Detects seperator characters, including null-terminator.
 //Should play well with nom's manyX! family of macros.
 fn is_seperator(c: char) -> bool {
-    c.is_whitespace() || c == ')' || c == '(' || c == char::from(0)
+    c.is_whitespace() || c == ')' || c == '(' || c == NULL
 }
