@@ -1,4 +1,14 @@
+use std::collections::HashMap;
 use std::fmt;
+
+//This is almost certainly going to change.
+pub type Environment = HashMap<String, Procedure>;
+
+#[derive(Copy, Clone)]
+pub enum Procedure {
+    Builtin(fn(&[Atom]) -> Result<Atom, String>),
+    //The types representing user-defined procs go here
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
