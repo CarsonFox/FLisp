@@ -48,6 +48,15 @@ pub enum Atom {
     Identifier(String),
 }
 
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Atom::Numeric(x) => write!(f, "{}", x),
+            Atom::Identifier(s) => write!(f, "{}", s),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Number {
     Integer(i32),

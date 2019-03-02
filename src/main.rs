@@ -8,13 +8,27 @@ use rustyline::Editor;
 mod parse;
 use parse::*;
 
+mod eval;
+use eval::*;
+
 fn main() {
     let mut ed = Editor::<()>::new();
     loop {
         match ed.readline(">> ") {
             Ok(line) => {
                 ed.add_history_entry(line.as_ref());
-                let _ = dbg!(parse_repl_line(line));
+
+                match parse_repl_line(line) {
+                    Ok(vec) => {
+                        for e in vec.iter() {
+                            eval(e);
+                        }
+                    }
+                    Err(s) => {
+                        println!("{}", s);
+                        std::process::exit(1);
+                    }
+                }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("Encountered ^C");
