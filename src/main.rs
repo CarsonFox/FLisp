@@ -1,18 +1,15 @@
-extern crate nom;
-
-extern crate rustyline;
-
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 mod parse;
 use parse::*;
-
+mod types;
 mod eval;
 use eval::*;
 
 fn main() {
     let mut ed = Editor::<()>::new();
+
     loop {
         match ed.readline(">> ") {
             Ok(line) => {
@@ -20,8 +17,11 @@ fn main() {
 
                 match parse_repl_line(line) {
                     Ok(vec) => {
-                        for e in vec.iter() {
-                            eval(e);
+                        for expr in vec.iter() {
+                            match eval(expr) {
+                                Ok(atom) => println!("{}", atom),
+                                Err(msg) => println!("{}", msg),
+                            }
                         }
                     }
                     Err(s) => {
