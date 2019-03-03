@@ -1,4 +1,5 @@
 use crate::types::*;
+use std::collections::VecDeque;
 
 #[allow(unused_imports)]
 use nom::{
@@ -42,7 +43,7 @@ pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
 
 named!(expression <&str, Expression>, alt!(
     atom => { |a| Expression::Atomic(a) } |
-    sexpr => { |e| Expression::SExpr(e) }
+    sexpr => { |e| Expression::SExpr(VecDeque::from(e)) }
 ));
 
 named!(sexpr <&str, Vec<Expression> >, delimited!(
@@ -52,8 +53,8 @@ named!(sexpr <&str, Vec<Expression> >, delimited!(
 ));
 
 named!(atom <&str, Atom>, alt!(
-    integer => { |x| Atom::Integer(x) } |
-    float   => { |x| Atom::Float(x) } |
+    integer => { |x| Atom::Numeric(Number::Integer(x)) } |
+    float   => { |x| Atom::Numeric(Number::Float(x)) } |
     token   => { |x: &str| Atom::Identifier(String::from(x)) }
 ));
 

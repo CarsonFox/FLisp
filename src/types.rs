@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
 //This is almost certainly going to change.
@@ -10,26 +10,41 @@ pub enum Procedure {
     //The types representing user-defined procs go here
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Atomic(Atom),
-    SExpr(Vec<Expression>),
+    SExpr(VecDeque<Expression>),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum Atom {
-    Integer(i32),
-    Float(f32),
-    //TODO: Maybe change this to &str? Would need to do lifetime stuff though
+    Numeric(Number),
     Identifier(String),
 }
 
 impl fmt::Display for Atom {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Atom::Integer(x) => write!(f, "{}", x),
-            Atom::Float(x) => write!(f, "{}", x),
+            Atom::Numeric(x) => write!(f, "{}", x),
             Atom::Identifier(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+//Even though it seems nicer to have all the atoms under one enum at first,
+//This causes massive match expressions when trying to implement arithmetic.
+//This also lets Number implement Copy, which should be convenient.
+#[derive(Debug, Copy, Clone)]
+pub enum Number {
+    Integer(i32),
+    Float(f32),
+}
+
+impl fmt::Display for Number {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Number::Integer(x) => write!(f, "{}", x),
+            Number::Float(x) => write!(f, "{}", x),
         }
     }
 }

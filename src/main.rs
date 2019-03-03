@@ -11,7 +11,7 @@ use builtins::*;
 
 fn main() {
     let mut ed = Editor::<()>::new();
-    let env = get_default_env();
+//    let env = get_default_env();
 
     loop {
         match ed.readline(">> ") {
@@ -21,10 +21,7 @@ fn main() {
                 match parse_repl_line(line) {
                     Ok(vec) => {
                         for expr in vec.iter() {
-                            match eval(expr, &env) {
-                                Ok(atom) => println!("{}", atom),
-                                Err(msg) => println!("{}", msg),
-                            }
+                            let _ = dbg!(expr);
                         }
                     }
                     Err(s) => {
