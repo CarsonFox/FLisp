@@ -1,17 +1,19 @@
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
-mod parse;
-use parse::*;
-mod eval;
-mod types;
-use eval::*;
+//Not sure I'm using rust modules correctly
 mod builtins;
+mod eval;
+mod parse;
+mod types;
+
 use builtins::*;
+use eval::*;
+use parse::*;
 
 fn main() {
     let mut ed = Editor::<()>::new();
-//    let env = get_default_env();
+    let env = get_default_env();
 
     loop {
         match ed.readline(">> ") {
@@ -20,8 +22,15 @@ fn main() {
 
                 match parse_repl_line(line) {
                     Ok(vec) => {
-                        for expr in vec.iter() {
-                            let _ = dbg!(expr);
+                        for expr in vec.into_iter() {
+                            match eval(expr, &env) {
+                                Ok(result) => {
+                                    println!("{}", dbg!(result));
+                                }
+                                Err(msg) => {
+                                    println!("{}", msg);
+                                }
+                            }
                         }
                     }
                     Err(s) => {

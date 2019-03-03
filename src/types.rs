@@ -1,5 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
+use std::ops::Add;
 
 //This is almost certainly going to change.
 pub type Environment = HashMap<String, Procedure>;
@@ -45,6 +46,22 @@ impl fmt::Display for Number {
         match self {
             Number::Integer(x) => write!(f, "{}", x),
             Number::Float(x) => write!(f, "{}", x),
+        }
+    }
+}
+
+impl Add for Number {
+    type Output = Number;
+    fn add(self, other: Number) -> Number {
+        match self {
+            Number::Integer(x) => match other {
+                Number::Integer(y) => Number::Integer(x + y),
+                Number::Float(y) => Number::Float(x as f32 + y),
+            },
+            Number::Float(x) => match other {
+                Number::Integer(y) => Number::Float(x + y as f32),
+                Number::Float(y) => Number::Float(x + y),
+            },
         }
     }
 }
