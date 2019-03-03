@@ -23,6 +23,15 @@ pub enum Atom {
     Identifier(String),
 }
 
+impl Atom {
+    pub fn is_number(&self) -> bool {
+        match self {
+            Atom::Numeric(_) => true,
+            _ => false,
+        }
+    }
+}
+
 impl fmt::Display for Atom {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

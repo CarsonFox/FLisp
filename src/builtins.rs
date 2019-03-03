@@ -15,13 +15,8 @@ fn add_exprs(args: &[Atom]) -> Result<Atom, String> {
         ));
     }
 
-    for arg in args {
-        match arg {
-            Atom::Numeric(_) => {}
-            _ => {
-                return Err(format!("Cannot add to {}", arg));
-            }
-        }
+    if let Some(a) = args.iter().find(|a| !a.is_number()) {
+        return Err(format!("Attempted to add non-numeric object: {}", a));
     }
 
     Ok(args[1..].iter().fold(args[0].clone(), |acc, x| match acc {
