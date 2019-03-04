@@ -25,7 +25,7 @@ fn main() {
                 match parse_repl_line(line) {
                     Ok(vec) => {
                         for expr in vec.into_iter() {
-                            match eval(Rc::new(expr), &env) {
+                            match eval(&expr, &env) {
                                 Ok(result) => {
                                     println!("{}", dbg!(result));
                                 }

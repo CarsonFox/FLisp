@@ -8,14 +8,14 @@ pub type Environment = HashMap<String, Procedure>;
 
 #[derive(Copy, Clone)]
 pub enum Procedure {
-    Builtin(fn(&[Atom]) -> Result<Atom, String>),
+    Builtin(fn(Vec<Rc<Atom>>) -> Result<Rc<Atom>, String>),
     //The types representing user-defined procs go here
 }
 
 #[derive(Debug, Clone)]
 pub enum Expression {
     Atomic(Rc<Atom>),
-    SExpr(Rc<Vec<Expression>>),
+    SExpr(Vec<Expression>),
 }
 
 //Atoms probably don't need to contain Rc?

@@ -44,7 +44,7 @@ pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
 
 named!(expression <&str, Expression>, alt!(
     atom => { |a| Expression::Atomic(Rc::new(a)) } |
-    sexpr => { |e| Expression::SExpr(Rc::new(e)) }
+    sexpr => { |e| Expression::SExpr(e) }
 ));
 
 named!(sexpr <&str, Vec<Expression> >, delimited!(

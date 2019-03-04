@@ -1,4 +1,5 @@
 use crate::types::*;
+use std::rc::Rc;
 
 pub fn get_default_env() -> Environment {
     [(String::from("+"), Procedure::Builtin(add_exprs))]
@@ -7,7 +8,7 @@ pub fn get_default_env() -> Environment {
         .collect()
 }
 
-fn add_exprs(args: &[Atom]) -> Result<Atom, String> {
+fn add_exprs(args: Vec<Rc<Atom>>) -> Result<Rc<Atom>, String> {
     if args.len() < 2 {
         return Err(format!(
             "Invalid number of arguments to procedure \"+\": {}",
@@ -19,11 +20,14 @@ fn add_exprs(args: &[Atom]) -> Result<Atom, String> {
         return Err(format!("Attempted to add non-numeric object: {}", a));
     }
 
-    Ok(args[1..].iter().fold(args[0].clone(), |acc, x| match acc {
-        Atom::Numeric(acc) => match x {
-            Atom::Numeric(x) => Atom::Numeric(acc + *x),
+    Ok(Rc::new(args[1..].iter().map(|a| a.as_ref()).fold(
+        args[0].as_ref().clone(),
+        |acc, x| match acc {
+            Atom::Numeric(acc) => match x {
+                Atom::Numeric(x) => Atom::Numeric(acc + *x),
+                _ => unreachable!(),
+            },
             _ => unreachable!(),
         },
-        _ => unreachable!(),
-    }))
+    )))
 }
