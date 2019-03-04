@@ -1,5 +1,5 @@
 use crate::types::*;
-use std::collections::VecDeque;
+use std::rc::Rc;
 
 #[allow(unused_imports)]
 use nom::{
@@ -7,6 +7,7 @@ use nom::{
     take_while1, ws,
 };
 
+//Top level expressions don't need to be Rc.
 pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
     //Needs to be null-terminated to play well with nom
     line.push(char::from(0));
@@ -42,8 +43,8 @@ pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
 }
 
 named!(expression <&str, Expression>, alt!(
-    atom => { |a| Expression::Atomic(a) } |
-    sexpr => { |e| Expression::SExpr(VecDeque::from(e)) }
+    atom => { |a| Expression::Atomic(Rc::new(a)) } |
+    sexpr => { |e| Expression::SExpr(Rc::new(e)) }
 ));
 
 named!(sexpr <&str, Vec<Expression> >, delimited!(
@@ -53,8 +54,8 @@ named!(sexpr <&str, Vec<Expression> >, delimited!(
 ));
 
 named!(atom <&str, Atom>, alt!(
-    integer => { |x| Atom::Numeric(Number::Integer(x)) } |
-    float   => { |x| Atom::Numeric(Number::Float(x)) } |
+    integer => { |x| Atom::from(x) } |
+    float   => { |x| Atom::from(x) } |
     token   => { |x: &str| Atom::Identifier(String::from(x)) }
 ));
 
@@ -70,7 +71,6 @@ named!(token <&str, &str>, take_till1!(
     is_seperator));
 
 //Detects seperator characters, including null-terminator.
-//Should play well with nom's manyX! family of macros.
 fn is_seperator(c: char) -> bool {
     c.is_whitespace() || c == ')' || c == '(' || c == char::from(0)
 }

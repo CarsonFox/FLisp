@@ -11,6 +11,8 @@ use builtins::*;
 use eval::*;
 use parse::*;
 
+use std::rc::Rc;
+
 fn main() {
     let mut ed = Editor::<()>::new();
     let env = get_default_env();
@@ -23,7 +25,7 @@ fn main() {
                 match parse_repl_line(line) {
                     Ok(vec) => {
                         for expr in vec.into_iter() {
-                            match eval(expr, &env) {
+                            match eval(Rc::new(expr), &env) {
                                 Ok(result) => {
                                     println!("{}", dbg!(result));
                                 }

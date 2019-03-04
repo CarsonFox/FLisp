@@ -1,6 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::fmt;
 use std::ops::Add;
+use std::rc::Rc;
 
 //This is almost certainly going to change.
 pub type Environment = HashMap<String, Procedure>;
@@ -13,10 +14,11 @@ pub enum Procedure {
 
 #[derive(Debug, Clone)]
 pub enum Expression {
-    Atomic(Atom),
-    SExpr(VecDeque<Expression>),
+    Atomic(Rc<Atom>),
+    SExpr(Rc<Vec<Expression>>),
 }
 
+//Atoms probably don't need to contain Rc?
 #[derive(Debug, Clone)]
 pub enum Atom {
     Numeric(Number),
@@ -38,6 +40,18 @@ impl fmt::Display for Atom {
             Atom::Numeric(x) => write!(f, "{}", x),
             Atom::Identifier(s) => write!(f, "{}", s),
         }
+    }
+}
+
+impl From<i32> for Atom {
+    fn from(x: i32) -> Atom {
+        Atom::Numeric(Number::Integer(x))
+    }
+}
+
+impl From<f32> for Atom {
+    fn from(x: f32) -> Atom {
+        Atom::Numeric(Number::Float(x))
     }
 }
 
