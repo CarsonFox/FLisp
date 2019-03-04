@@ -7,7 +7,6 @@ use nom::{
     take_while1, ws,
 };
 
-//Top level expressions don't need to be Rc.
 pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
     //Needs to be null-terminated to play well with nom
     line.push(char::from(0));
@@ -43,7 +42,7 @@ pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
 }
 
 named!(expression <&str, Expression>, alt!(
-    atom => { |a| Expression::Atomic(Rc::new(a)) } |
+    atom => { |a| a } |
     sexpr => { |e| Expression::SExpr(e) }
 ));
 
@@ -53,10 +52,10 @@ named!(sexpr <&str, Vec<Expression> >, delimited!(
     char!(')')
 ));
 
-named!(atom <&str, Atom>, alt!(
-    integer => { |x| Atom::from(x) } |
-    float   => { |x| Atom::from(x) } |
-    token   => { |x: &str| Atom::Identifier(String::from(x)) }
+named!(atom <&str, Expression>, alt!(
+    integer => { |x| Expression::from(x) } |
+    float   => { |x| Expression::from(x) } |
+    token   => { |x: &str| Expression::Identifier(String::from(x)) }
 ));
 
 named!(integer <&str, i32>, flat_map!(

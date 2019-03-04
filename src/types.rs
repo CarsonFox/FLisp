@@ -3,61 +3,46 @@ use std::fmt;
 use std::ops::Add;
 use std::rc::Rc;
 
-//This is almost certainly going to change.
-pub type Environment = HashMap<String, Procedure>;
-
-#[derive(Copy, Clone)]
-pub enum Procedure {
-    Builtin(fn(Vec<Rc<Atom>>) -> Result<Rc<Atom>, String>),
-    //The types representing user-defined procs go here
-}
+pub type Environment = HashMap<String, Rc<Expression>>;
 
 #[derive(Debug, Clone)]
 pub enum Expression {
-    Atomic(Rc<Atom>),
+    Numeric(Number),
+    Identifier(String),
     SExpr(Vec<Expression>),
 }
 
-//Atoms probably don't need to contain Rc?
-#[derive(Debug, Clone)]
-pub enum Atom {
-    Numeric(Number),
-    Identifier(String),
-}
-
-impl Atom {
+impl Expression {
     pub fn is_number(&self) -> bool {
         match self {
-            Atom::Numeric(_) => true,
+            Expression::Numeric(_) => true,
             _ => false,
         }
     }
 }
 
-impl fmt::Display for Atom {
+impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Atom::Numeric(x) => write!(f, "{}", x),
-            Atom::Identifier(s) => write!(f, "{}", s),
+            Expression::Numeric(x) => write!(f, "{}", x),
+            Expression::Identifier(s) => write!(f, "{}", s),
+            Expression::SExpr(_) => write!(f, "S-Expression"),
         }
     }
 }
 
-impl From<i32> for Atom {
-    fn from(x: i32) -> Atom {
-        Atom::Numeric(Number::Integer(x))
+impl From<i32> for Expression {
+    fn from(x: i32) -> Expression {
+        Expression::Numeric(Number::Integer(x))
     }
 }
 
-impl From<f32> for Atom {
-    fn from(x: f32) -> Atom {
-        Atom::Numeric(Number::Float(x))
+impl From<f32> for Expression {
+    fn from(x: f32) -> Expression {
+        Expression::Numeric(Number::Float(x))
     }
 }
 
-//Even though it seems nicer to have all the atoms under one enum at first,
-//This causes massive match expressions when trying to implement arithmetic.
-//This also lets Number implement Copy, which should be convenient.
 #[derive(Debug, Copy, Clone)]
 pub enum Number {
     Integer(i32),

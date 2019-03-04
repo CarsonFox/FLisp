@@ -7,10 +7,12 @@ mod eval;
 mod parse;
 mod types;
 
-use builtins::*;
 use eval::*;
 use parse::*;
 
+use crate::types::Environment;
+use crate::types::Expression;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 fn main() {
@@ -25,9 +27,9 @@ fn main() {
                 match parse_repl_line(line) {
                     Ok(vec) => {
                         for expr in vec.into_iter() {
-                            match eval(&expr, &env) {
+                            match eval(Rc::new(expr), &env) {
                                 Ok(result) => {
-                                    println!("{}", dbg!(result));
+                                    println!("{}", result);
                                 }
                                 Err(msg) => {
                                     println!("{}", msg);
@@ -55,4 +57,14 @@ fn main() {
             }
         }
     }
+}
+
+fn get_default_env() -> Environment {
+    [(
+        String::from("pi"),
+        Rc::new(Expression::from(std::f32::consts::PI)),
+    )]
+        .iter()
+        .cloned()
+        .collect()
 }
