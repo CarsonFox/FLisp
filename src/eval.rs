@@ -19,7 +19,7 @@ pub fn eval(expr: Rc<Expression>, env: &Environment) -> Result<Rc<Expression>, S
                 } else {
                     Err(format!("Unbound variable: {}", id))
                 }
-            },
+            }
         },
         Expression::SExpr(list) => apply(list, env),
     }
@@ -32,47 +32,45 @@ fn apply(list: &Vec<Rc<Expression>>, env: &Environment) -> Result<Rc<Expression>
         return Err(String::from("Empty application"));
     }
 
-    let result = eval(Rc::clone(&list[0]), env);
+    let result = eval(Rc::clone(&list[0]), env)?;
 
-    if let Err(msg) = result {
-        return Err(msg);
-    }
-
-    match result.unwrap().as_ref() {
+    match result.as_ref() {
         Expression::Numeric(_) => return Err(String::from("Cannot apply Number as a Procedure.")),
         Expression::Identifier(id) => {
             if let Some(expr) = env.get(id) {
                 return call(Rc::clone(expr), &list[1..], env);
-            } else if let Some(result) = special_form(list, env) {
+            } else if let Some(result) = special_form(id, &list[1..], env) {
                 return result;
             } else {
                 return Err(format!("Unrecognized procedure: {}", id));
             }
-        },
-        _ => unreachable!()
+        }
+        _ => unreachable!(),
     }
 }
 
-fn call(proc: Rc<Expression>, _list: &[Rc<Expression>], _env: &Environment) -> Result<Rc<Expression>, String> {
+fn call(
+    proc: Rc<Expression>,
+    _args: &[Rc<Expression>],
+    _env: &Environment,
+) -> Result<Rc<Expression>, String> {
     return Err(format!("Applying procedure: {}", proc.as_ref()));
 }
 
 //Check for a special form. Returns None if no special form was found, unless an error occurs.
-fn special_form(_list: &Vec<Rc<Expression>>, _env: &Environment) -> Option<Result<Rc<Expression>, String>> {
-//    let result = eval(Rc::clone(&list[0]), env);
-//
-//    match result {
-//        Ok(expr) => {
-//            match expr.as_ref() {
-//                Expression::SExpr(_) |
-//                Expression::Numeric(_) => return None,
-//                _ => {}
-//            }
-//        },
-//        Err(msg) => return Some(Err(msg)),
-//    }
+fn special_form(
+    proc: &String,
+    args: &[Rc<Expression>],
+    env: &Environment,
+) -> Option<Result<Rc<Expression>, String>> {
+    if !SPECIAL_FORMS.contains(proc.as_str()) {
+        return None;
+    }
 
-    None
+    match proc.as_str() {
+        "+" => Some(add(args, env)),
+        _ => None,
+    }
 }
 
 fn is_special_form(expr: &Expression) -> bool {
@@ -80,4 +78,39 @@ fn is_special_form(expr: &Expression) -> bool {
         Expression::Identifier(id) => SPECIAL_FORMS.contains(id.as_str()),
         _ => false,
     }
+}
+
+fn add(args: &[Rc<Expression>], env: &Environment) -> Result<Rc<Expression>, String> {
+    if args.len() < 2 {
+        return Err(String::from("Not enough arguments to addition"));
+    }
+
+    //Evaluate all the arguments
+    let mut args_eval = Vec::with_capacity(args.len());
+    for arg in args {
+        args_eval.push(eval(Rc::clone(arg), env)?);
+    }
+
+    //Check for non-numeric arguments
+    if let Some(expr) = args_eval.iter().find(|expr| !expr.is_number()) {
+        return Err(format!("Cannot add non-numeric object {}", expr.as_ref()));
+    }
+
+    //Start with first argument, "cast" everything to Number, then sum
+    if let Expression::Numeric(first) = args_eval[0].as_ref() {
+        let ans = args_eval[1..].iter()
+            .map(|expr| {
+                if let Expression::Numeric(num) = expr.as_ref() {
+                    num
+                } else {
+                    unreachable!()
+                }
+            }).fold(*first, |acc, x| acc + *x);
+
+        return Ok(Rc::new(Expression::Numeric(ans)));
+    }
+
+    //Just in case
+    let _ = dbg!(args_eval);
+    unreachable!()
 }

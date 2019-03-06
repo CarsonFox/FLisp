@@ -4,7 +4,6 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
 //Not sure I'm using rust modules correctly
-mod builtins;
 mod eval;
 mod parse;
 mod types;
