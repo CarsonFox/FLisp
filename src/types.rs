@@ -9,7 +9,7 @@ pub type Environment = HashMap<String, Rc<Expression>>;
 pub enum Expression {
     Numeric(Number),
     Identifier(String),
-    SExpr(Vec<Expression>),
+    SExpr(Vec<Rc<Expression>>),
 }
 
 impl Expression {

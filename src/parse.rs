@@ -7,7 +7,7 @@ use nom::{
     take_while1, ws,
 };
 
-pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
+pub fn parse_repl_line(mut line: String) -> Result<Vec<Rc<Expression>>, String> {
     //Needs to be null-terminated to play well with nom
     line.push(char::from(0));
 
@@ -22,7 +22,7 @@ pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
 
         match expression(slice) {
             Ok((remainder, expr)) => {
-                expr_vec.push(expr);
+                expr_vec.push(Rc::clone(&expr));
                 slice = remainder.trim_start();
             }
             Err(nom::Err::Incomplete(_)) => {
@@ -41,21 +41,21 @@ pub fn parse_repl_line(mut line: String) -> Result<Vec<Expression>, String> {
     }
 }
 
-named!(expression <&str, Expression>, alt!(
+named!(expression <&str, Rc<Expression>>, alt!(
     atom => { |a| a } |
-    sexpr => { |e| Expression::SExpr(e) }
+    sexpr => { |e| Rc::new(Expression::SExpr(e)) }
 ));
 
-named!(sexpr <&str, Vec<Expression> >, delimited!(
+named!(sexpr <&str, Vec<Rc<Expression>>>, delimited!(
     char!('('),
     ws!(many1!(expression)),
     char!(')')
 ));
 
-named!(atom <&str, Expression>, alt!(
-    integer => { |x| Expression::from(x) } |
-    float   => { |x| Expression::from(x) } |
-    token   => { |x: &str| Expression::Identifier(String::from(x)) }
+named!(atom <&str, Rc<Expression>>, alt!(
+    integer => { |x| Rc::new(Expression::from(x)) } |
+    float   => { |x| Rc::new(Expression::from(x)) } |
+    token   => { |x: &str| Rc::new(Expression::Identifier(String::from(x))) }
 ));
 
 named!(integer <&str, i32>, flat_map!(

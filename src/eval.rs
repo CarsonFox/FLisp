@@ -12,6 +12,20 @@ pub fn eval(expr: Rc<Expression>, env: &Environment) -> Result<Rc<Expression>, S
     }
 }
 
-fn apply(_list: &Vec<Expression>, _env: &Environment) -> Result<Rc<Expression>, String> {
+fn apply(list: &Vec<Rc<Expression>>, env: &Environment) -> Result<Rc<Expression>, String> {
+    //General approach: Look up the first expression. It could be a procedure, in which case
+    //it just needs to be called. If the lookup fails, try to recognize a special form.
+
+    if let Some(result) = special_form(list, env) {
+        return result;
+    }
+
     Err(String::from("Function application not supported."))
+}
+
+fn special_form(_list: &Vec<Rc<Expression>>, _env: &Environment) -> Option<Result<Rc<Expression>, String>> {
+    //In order to write this, the first element of list needs to be passed back to eval. This means
+    //either the elements need to be wrapped in Rc, or Rc's are made here.
+
+    None
 }

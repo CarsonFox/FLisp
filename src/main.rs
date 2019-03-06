@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 
@@ -9,11 +11,7 @@ mod types;
 
 use eval::*;
 use parse::*;
-
-use crate::types::Environment;
-use crate::types::Expression;
-use std::collections::HashMap;
-use std::rc::Rc;
+use types::*;
 
 fn main() {
     let mut ed = Editor::<()>::new();
@@ -27,7 +25,7 @@ fn main() {
                 match parse_repl_line(line) {
                     Ok(vec) => {
                         for expr in vec.into_iter() {
-                            match eval(Rc::new(expr), &env) {
+                            match eval(Rc::clone(&expr), &env) {
                                 Ok(result) => {
                                     println!("{}", result);
                                 }
