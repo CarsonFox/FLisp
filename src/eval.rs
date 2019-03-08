@@ -5,10 +5,10 @@ use std::rc::Rc;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref SPECIAL_FORMS: HashSet<&'static str> = ["+"].iter().cloned().collect();
+    static ref SPECIAL_FORMS: HashSet<&'static str> = ["+", "define"].iter().cloned().collect();
 }
 
-pub fn eval(expr: Rc<Expression>, env: &Environment) -> Result<Rc<Expression>, String> {
+pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression>, String> {
     match expr.as_ref() {
         Expression::Numeric(_) => Ok(Rc::clone(&expr)),
         Expression::Identifier(id) => match env.get(id) {
@@ -25,7 +25,7 @@ pub fn eval(expr: Rc<Expression>, env: &Environment) -> Result<Rc<Expression>, S
     }
 }
 
-fn apply(list: &Vec<Rc<Expression>>, env: &Environment) -> Result<Rc<Expression>, String> {
+fn apply(list: &Vec<Rc<Expression>>, env: &mut Environment) -> Result<Rc<Expression>, String> {
     //General approach: Try to eval first sub-expression. If it can't be evaluated, check to see
     //if it's a special form.
     if list.is_empty() {
@@ -52,7 +52,7 @@ fn apply(list: &Vec<Rc<Expression>>, env: &Environment) -> Result<Rc<Expression>
 fn call(
     proc: Rc<Expression>,
     _args: &[Rc<Expression>],
-    _env: &Environment,
+    _env: &mut Environment,
 ) -> Result<Rc<Expression>, String> {
     return Err(format!("Applying procedure: {}", proc.as_ref()));
 }
@@ -61,7 +61,7 @@ fn call(
 fn special_form(
     proc: &String,
     args: &[Rc<Expression>],
-    env: &Environment,
+    env: &mut Environment,
 ) -> Option<Result<Rc<Expression>, String>> {
     if !SPECIAL_FORMS.contains(proc.as_str()) {
         return None;
@@ -69,6 +69,7 @@ fn special_form(
 
     match proc.as_str() {
         "+" => Some(add(args, env)),
+        "define" => Some(define(args, env)),
         _ => None,
     }
 }
@@ -80,7 +81,7 @@ fn is_special_form(expr: &Expression) -> bool {
     }
 }
 
-fn add(args: &[Rc<Expression>], env: &Environment) -> Result<Rc<Expression>, String> {
+fn add(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
     if args.len() < 2 {
         return Err(String::from("Not enough arguments to addition"));
     }
@@ -98,14 +99,16 @@ fn add(args: &[Rc<Expression>], env: &Environment) -> Result<Rc<Expression>, Str
 
     //Start with first argument, "cast" everything to Number, then sum
     if let Expression::Numeric(first) = args_eval[0].as_ref() {
-        let ans = args_eval[1..].iter()
+        let ans = args_eval[1..]
+            .iter()
             .map(|expr| {
                 if let Expression::Numeric(num) = expr.as_ref() {
                     num
                 } else {
                     unreachable!()
                 }
-            }).fold(*first, |acc, x| acc + *x);
+            })
+            .fold(*first, |acc, x| acc + *x);
 
         return Ok(Rc::new(Expression::Numeric(ans)));
     }
@@ -113,4 +116,21 @@ fn add(args: &[Rc<Expression>], env: &Environment) -> Result<Rc<Expression>, Str
     //Just in case
     let _ = dbg!(args_eval);
     unreachable!()
+}
+
+fn define(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
+    if args.len() != 2 {
+        return Err(format!("Expected 2 arguments to define, found {}", args.len()));
+    }
+
+    match args[0].as_ref() {
+        Expression::Identifier(id) => {
+            let bind_value = eval(Rc::clone(&args[1]), env)?;
+            env.insert(id.clone(), Rc::clone(&bind_value));
+            return Ok(bind_value);
+        },
+        _ => {
+            unimplemented!();
+        }
+    }
 }

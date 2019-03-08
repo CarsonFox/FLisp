@@ -14,7 +14,7 @@ use types::*;
 
 fn main() {
     let mut ed = Editor::<()>::new();
-    let env = get_default_env();
+    let mut env = get_default_env();
 
     loop {
         match ed.readline(">> ") {
@@ -24,7 +24,7 @@ fn main() {
                 match parse_repl_line(line) {
                     Ok(vec) => {
                         for expr in vec.into_iter() {
-                            match eval(Rc::clone(&expr), &env) {
+                            match eval(Rc::clone(&expr), &mut env) {
                                 Ok(result) => {
                                     println!("{}", result);
                                 }
