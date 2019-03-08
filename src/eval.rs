@@ -11,8 +11,8 @@ lazy_static! {
 pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression>, String> {
     match expr.as_ref() {
         Expression::Numeric(_) => Ok(Rc::clone(&expr)),
-        Expression::Identifier(id) => match env.get(id) {
-            Some(expr) => Ok(Rc::clone(expr)),
+        Expression::Identifier(id) => match env_lookup(id, env) {
+            Some(expr) => Ok(Rc::clone(&expr)),
             None => {
                 if is_special_form(expr.as_ref()) {
                     Ok(expr)
@@ -37,8 +37,8 @@ fn apply(list: &Vec<Rc<Expression>>, env: &mut Environment) -> Result<Rc<Express
     match result.as_ref() {
         Expression::Numeric(_) => return Err(String::from("Cannot apply Number as a Procedure.")),
         Expression::Identifier(id) => {
-            if let Some(expr) = env.get(id) {
-                return call(Rc::clone(expr), &list[1..], env);
+            if let Some(expr) = env_lookup(id, env) {
+                return call(Rc::clone(&expr), &list[1..], env);
             } else if let Some(result) = special_form(id, &list[1..], env) {
                 return result;
             } else {
@@ -55,6 +55,15 @@ fn call(
     _env: &mut Environment,
 ) -> Result<Rc<Expression>, String> {
     return Err(format!("Applying procedure: {}", proc.as_ref()));
+}
+
+fn env_lookup(key: &String, env: &Environment) -> Option<Rc<Expression>> {
+    for map in env.iter().rev() {
+        if let Some(result) = map.get(key.as_str()) {
+            return Some(Rc::clone(result));
+        }
+    }
+    None
 }
 
 //Check for a special form. Returns None if no special form was found, unless an error occurs.
@@ -126,7 +135,7 @@ fn define(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expressio
     match args[0].as_ref() {
         Expression::Identifier(id) => {
             let bind_value = eval(Rc::clone(&args[1]), env)?;
-            env.insert(id.clone(), Rc::clone(&bind_value));
+            env.last_mut().unwrap().insert(id.clone(), Rc::clone(&bind_value));
             return Ok(bind_value);
         },
         _ => {

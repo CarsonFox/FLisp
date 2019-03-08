@@ -3,7 +3,7 @@ use std::fmt;
 use std::ops::Add;
 use std::rc::Rc;
 
-pub type Environment = HashMap<String, Rc<Expression>>;
+pub type Environment = Vec<HashMap<String, Rc<Expression>>>;
 
 #[derive(Debug, Clone)]
 pub enum Expression {

@@ -57,11 +57,11 @@ fn main() {
 }
 
 fn get_default_env() -> Environment {
-    [(
+    vec![[(
         String::from("pi"),
         Rc::new(Expression::from(std::f32::consts::PI)),
     )]
         .iter()
         .cloned()
-        .collect()
+        .collect()]
 }
