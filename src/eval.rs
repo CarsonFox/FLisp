@@ -22,6 +22,9 @@ pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression
             }
         },
         Expression::SExpr(list) => apply(list, env),
+        _ => {
+            panic!("Should never evaluate a procedure!");
+        }
     }
 }
 
@@ -54,7 +57,7 @@ fn call(
     _args: &[Rc<Expression>],
     _env: &mut Environment,
 ) -> Result<Rc<Expression>, String> {
-    return Err(format!("Applying procedure: {}", proc.as_ref()));
+    Err(format!("Applying procedure: {}", proc.as_ref()))
 }
 
 fn env_lookup(key: &String, env: &Environment) -> Option<Rc<Expression>> {
@@ -129,15 +132,51 @@ fn add(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>,
 
 fn define(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
     if args.len() != 2 {
-        return Err(format!("Expected 2 arguments to define, found {}", args.len()));
+        return Err(format!(
+            "Expected 2 arguments to define, found {}",
+            args.len()
+        ));
     }
 
     match args[0].as_ref() {
         Expression::Identifier(id) => {
             let bind_value = eval(Rc::clone(&args[1]), env)?;
-            env.last_mut().unwrap().insert(id.clone(), Rc::clone(&bind_value));
+
+            env.last_mut()
+                .unwrap()
+                .insert(id.clone(), Rc::clone(&bind_value));
+
             return Ok(bind_value);
-        },
+        }
+        Expression::SExpr(sexpr) => {
+            //Check for non-identifier arguments
+            if let Some(expr) = sexpr.iter().find(|expr| !expr.is_identifier()) {
+                return Err(format!(
+                    "Expected list of identifiers, found {}",
+                    expr.as_ref()
+                ));
+            }
+
+            let proc = Rc::new(Expression::Procedure(Procedure::new(
+                sexpr[1..]
+                    .iter()
+                    .map(|expr| {
+                        if let Expression::Identifier(id) = expr.as_ref() {
+                            id.clone()
+                        } else {
+                            unreachable!()
+                        }
+                    })
+                    .collect(),
+                Rc::clone(&args[1]),
+            )));
+
+            if let Expression::Identifier(id) = sexpr[0].as_ref() {
+                env.last_mut().unwrap().insert(id.clone(), Rc::clone(&proc));
+                return Ok(proc);
+            }
+            unreachable!()
+        }
         _ => {
             unimplemented!();
         }

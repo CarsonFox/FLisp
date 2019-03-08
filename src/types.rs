@@ -10,12 +10,20 @@ pub enum Expression {
     Numeric(Number),
     Identifier(String),
     SExpr(Vec<Rc<Expression>>),
+    Procedure(Procedure),
 }
 
 impl Expression {
     pub fn is_number(&self) -> bool {
         match self {
             Expression::Numeric(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_identifier(&self) -> bool {
+        match self {
+            Expression::Identifier(_) => true,
             _ => false,
         }
     }
@@ -27,6 +35,7 @@ impl fmt::Display for Expression {
             Expression::Numeric(x) => write!(f, "{}", x),
             Expression::Identifier(s) => write!(f, "{}", s),
             Expression::SExpr(_) => write!(f, "S-Expression"),
+            Expression::Procedure(p) => write!(f, "Procedure with {} arguments", p.arity()),
         }
     }
 }
@@ -40,6 +49,30 @@ impl From<i32> for Expression {
 impl From<f32> for Expression {
     fn from(x: f32) -> Expression {
         Expression::Numeric(Number::Float(x))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Procedure {
+    arg_ids: Vec<String>,
+    body: Rc<Expression>,
+}
+
+impl Procedure {
+    pub fn new(arg_ids: Vec<String>, body: Rc<Expression>) -> Procedure {
+        Procedure { arg_ids, body }
+    }
+
+    pub fn arity(&self) -> usize {
+        self.arg_ids.len()
+    }
+
+    pub fn get_arg_ids(&self) -> &Vec<String> {
+        &self.arg_ids
+    }
+
+    pub fn get_body(&self) -> Rc<Expression> {
+        Rc::clone(&self.body)
     }
 }
 
