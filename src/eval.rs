@@ -1,5 +1,5 @@
 use crate::types::*;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::rc::Rc;
 
 use lazy_static::lazy_static;
@@ -11,14 +11,10 @@ lazy_static! {
 pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression>, String> {
     match expr.as_ref() {
         Expression::Numeric(_) => Ok(Rc::clone(&expr)),
-        Expression::Identifier(id) => match env_lookup(id, env) {
-            Some(expr) => Ok(Rc::clone(&expr)),
-            None => {
-                if is_special_form(expr.as_ref()) {
-                    Ok(expr)
-                } else {
-                    Err(format!("Unbound variable: {}", id))
-                }
+        Expression::Identifier(id) => {
+            match env_lookup(id, env) {
+                Some(expr) => Ok(Rc::clone(&expr)),
+                None => Err(format!("Unbound variable: {}", id)),
             }
         },
         Expression::SExpr(list) => apply(list, env),
@@ -29,35 +25,57 @@ pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression
 }
 
 fn apply(list: &Vec<Rc<Expression>>, env: &mut Environment) -> Result<Rc<Expression>, String> {
-    //General approach: Try to eval first sub-expression. If it can't be evaluated, check to see
-    //if it's a special form.
     if list.is_empty() {
         return Err(String::from("Empty application"));
     }
 
-    let result = eval(Rc::clone(&list[0]), env)?;
+    //Try to evaluate the first sub-expression
+    let result = eval(Rc::clone(&list[0]), env);
 
-    match result.as_ref() {
-        Expression::Numeric(_) => return Err(String::from("Cannot apply Number as a Procedure.")),
-        Expression::Identifier(id) => {
-            if let Some(expr) = env_lookup(id, env) {
-                return call(Rc::clone(&expr), &list[1..], env);
-            } else if let Some(result) = special_form(id, &list[1..], env) {
-                return result;
+    //If evaluation fails, check for a special form
+    if result.is_err() {
+        if let Expression::Identifier(id) = list[0].as_ref() {
+            if let Some(spec_result) = special_form(id, &list[1..], env) {
+                return spec_result;
+            }
+        } else {
+            //If the procedure isn't a special form, pass on the error from eval
+            return result;
+        }
+    }
+
+    assert!(result.is_ok());
+
+    //Evaluation succeeded, try to call procedure
+    //Get arguments from list of identifiers
+    let args = &list[1..];
+
+    match result.unwrap().as_ref() {
+        Expression::Procedure(proc) => {
+            //Check that arity matches provided args
+            if proc.arity() == args.len() {
+                //Create new stack frame, fill in args
+                let mut frame = HashMap::with_capacity(args.len());
+                for (key, value) in proc.get_arg_ids().iter().zip(args.iter()) {
+                    frame.insert(key.clone(), Rc::clone(value));
+                }
+
+                //Push the frame, evaluate procedure
+                env.push(frame);
+                let result = eval(proc.get_body(), env);
+
+                //Pop the stack frame, return result
+                env.pop();
+                result
             } else {
-                return Err(format!("Unrecognized procedure: {}", id));
+                Err(format!("Expected {} arguments, but {} were provided.", proc.arity(), args.len()))
             }
         }
-        _ => unreachable!(),
+        Expression::Numeric(num) => Err(format!("Cannot apply Number {} as a Procedure.", num)),
+        //Eval should never return an Identifier or S-Expression!
+        Expression::Identifier(_) => unreachable!(),
+        Expression::SExpr(_) => unreachable!(),
     }
-}
-
-fn call(
-    proc: Rc<Expression>,
-    _args: &[Rc<Expression>],
-    _env: &mut Environment,
-) -> Result<Rc<Expression>, String> {
-    Err(format!("Applying procedure: {}", proc.as_ref()))
 }
 
 fn env_lookup(key: &String, env: &Environment) -> Option<Rc<Expression>> {
@@ -83,13 +101,6 @@ fn special_form(
         "+" => Some(add(args, env)),
         "define" => Some(define(args, env)),
         _ => None,
-    }
-}
-
-fn is_special_form(expr: &Expression) -> bool {
-    match expr {
-        Expression::Identifier(id) => SPECIAL_FORMS.contains(id.as_str()),
-        _ => false,
     }
 }
 
