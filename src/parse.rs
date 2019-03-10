@@ -53,9 +53,10 @@ named!(sexpr <&str, Vec<Rc<Expression>>>, delimited!(
 ));
 
 named!(atom <&str, Rc<Expression>>, alt!(
-    integer => { |x| Rc::new(Expression::from(x)) } |
-    float   => { |x| Rc::new(Expression::from(x)) } |
-    token   => { |x: &str| Rc::new(Expression::Identifier(String::from(x))) }
+    integer => { |i| Rc::new(Expression::from(i)) } |
+    float   => { |f| Rc::new(Expression::from(f)) } |
+    boolean => { |b| Rc::new(Expression::Boolean(b)) } |
+    token   => { |tok: &str| Rc::new(Expression::Identifier(String::from(tok))) }
 ));
 
 named!(integer <&str, i32>, flat_map!(
@@ -65,6 +66,11 @@ named!(integer <&str, i32>, flat_map!(
 named!(float <&str, f32>, flat_map!(
     token,
     parse_to!(f32)));
+
+named!(boolean <&str, bool>, alt!(
+    tag!("#t") => { |_| true } |
+    tag!("#f") => { |_| false }
+));
 
 named!(token <&str, &str>, take_till1!(
     is_seperator));

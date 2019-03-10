@@ -11,6 +11,7 @@ pub enum Expression {
     Identifier(String),
     SExpr(Vec<Rc<Expression>>),
     Procedure(Procedure),
+    Boolean(bool),
 }
 
 impl Expression {
@@ -36,6 +37,13 @@ impl fmt::Display for Expression {
             Expression::Identifier(s) => write!(f, "{}", s),
             Expression::SExpr(_) => write!(f, "S-Expression"),
             Expression::Procedure(p) => write!(f, "Procedure with {} arguments", p.arity()),
+            Expression::Boolean(b) => {
+                if *b {
+                    write!(f, "#t")
+                } else {
+                    write!(f, "#f")
+                }
+            }
         }
     }
 }

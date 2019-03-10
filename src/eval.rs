@@ -1,21 +1,20 @@
 use crate::types::*;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref SPECIAL_FORMS: HashSet<&'static str> = ["+", "define"].iter().cloned().collect();
+    static ref SPECIAL_FORMS: HashSet<&'static str> =
+        ["+", "define", "cond"].iter().cloned().collect();
 }
 
 pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression>, String> {
     match expr.as_ref() {
-        Expression::Numeric(_) => Ok(Rc::clone(&expr)),
-        Expression::Identifier(id) => {
-            match env_lookup(id, env) {
-                Some(expr) => Ok(Rc::clone(&expr)),
-                None => Err(format!("Unbound variable: {}", id)),
-            }
+        Expression::Numeric(_) | Expression::Boolean(_) => Ok(Rc::clone(&expr)),
+        Expression::Identifier(id) => match env_lookup(id, env) {
+            Some(expr) => Ok(Rc::clone(&expr)),
+            None => Err(format!("Unbound variable: {}", id)),
         },
         Expression::SExpr(list) => apply(list, env),
         _ => {
@@ -68,10 +67,15 @@ fn apply(list: &Vec<Rc<Expression>>, env: &mut Environment) -> Result<Rc<Express
                 env.pop();
                 result
             } else {
-                Err(format!("Expected {} arguments, but {} were provided.", proc.arity(), args.len()))
+                Err(format!(
+                    "Expected {} arguments, but {} were provided.",
+                    proc.arity(),
+                    args.len()
+                ))
             }
         }
         Expression::Numeric(num) => Err(format!("Cannot apply Number {} as a Procedure.", num)),
+        Expression::Boolean(b) => Err(format!("Cannot apply boolean {} as a Procedure.", b)),
         //Eval should never return an Identifier or S-Expression!
         Expression::Identifier(_) => unreachable!(),
         Expression::SExpr(_) => unreachable!(),
@@ -100,6 +104,7 @@ fn special_form(
     match proc.as_str() {
         "+" => Some(add(args, env)),
         "define" => Some(define(args, env)),
+        "cond" => Some(cond(args, env)),
         _ => None,
     }
 }
@@ -192,4 +197,11 @@ fn define(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expressio
             unimplemented!();
         }
     }
+}
+
+// cond looks at a list of pairs - predicates and values. It evaluates each predicate until
+// one returns #t, then returns the corresponding value.
+fn cond(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
+    //Need to add booleans now.
+    Err(String::from("Unimplemented!"))
 }
