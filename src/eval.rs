@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref SPECIAL_FORMS: HashSet<&'static str> =
-        ["+", "define", "cond"].iter().cloned().collect();
+        ["+", "define", "cond", "if"].iter().cloned().collect();
 }
 
 pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression>, String> {
@@ -105,6 +105,7 @@ fn special_form(
         "+" => Some(add(args, env)),
         "define" => Some(define(args, env)),
         "cond" => Some(cond(args, env)),
+        "if" => Some(s_if(args, env)),
         _ => None,
     }
 }
@@ -210,7 +211,7 @@ fn cond(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>
         match expr.as_ref() {
             Expression::SExpr(pair) => {
                 if pair.len() != 2 {
-                    return Err(format!("Expected pair, found {} expressions", pair.len()));
+                    return Err(format!("Expected pair in cond expression, found {} expressions", pair.len()));
                 }
 
                 match eval(Rc::clone(&pair[0]), env) {
@@ -243,4 +244,25 @@ fn cond(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>
     Err(String::from(
         "Conditional never found a satisfied predicate",
     ))
+}
+
+// If needs to be a special form to allow one of the values to not be evaluated
+fn s_if(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
+    //If deals with a triple: one predicate followed by two values.
+    if args.len() != 3 {
+        return Err(format!("Special form \"if\" expects three arguments, {} were given", args.len()));
+    }
+
+    let pred = eval(Rc::clone(&args[0]), env)?;
+
+    match pred.as_ref() {
+        Expression::Boolean(b) => {
+            if *b {
+                Ok(eval(Rc::clone(&args[1]), env)?)
+            } else {
+                Ok(eval(Rc::clone(&args[2]), env)?)
+            }
+        },
+        _ => Err(format!("Expected boolean predicate in if expression, found {}", pred.as_ref()))
+    }
 }
