@@ -10,11 +10,10 @@ mod types;
 
 use eval::*;
 use parse::*;
-use types::*;
 
 fn main() {
     let mut ed = Editor::<()>::new();
-    let mut env = get_default_env();
+    let mut env = load_stdlib(include_bytes!("stdlib.scm"));
 
     loop {
         match ed.readline(">> ") {
@@ -54,14 +53,4 @@ fn main() {
             }
         }
     }
-}
-
-fn get_default_env() -> Environment {
-    vec![[(
-        String::from("pi"),
-        Rc::new(Expression::from(std::f32::consts::PI)),
-    )]
-        .iter()
-        .cloned()
-        .collect()]
 }

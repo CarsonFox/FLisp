@@ -214,27 +214,33 @@ fn cond(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>
                 }
 
                 match eval(Rc::clone(&pair[0]), env) {
-                    Ok(expr) => {
-                        match expr.as_ref() {
-                            Expression::Boolean(b) => {
-                                if *b {
-                                    return eval(Rc::clone(&pair[1]), env);
-                                }
+                    Ok(expr) => match expr.as_ref() {
+                        Expression::Boolean(b) => {
+                            if *b {
+                                return eval(Rc::clone(&pair[1]), env);
                             }
-                            _ => {
-                                return Err(format!("Expected boolean predicate in cond, found {}", expr.as_ref()));
-                            }
+                        }
+                        _ => {
+                            return Err(format!(
+                                "Expected boolean predicate in cond, found {}",
+                                expr.as_ref()
+                            ));
                         }
                     },
                     Err(msg) => {
                         return Err(msg);
                     }
                 }
-            },
+            }
             _ => {
-                return Err(format!("Expected pair in form (predicate value), found {}", expr.as_ref()));
+                return Err(format!(
+                    "Expected pair in form (predicate value), found {}",
+                    expr.as_ref()
+                ));
             }
         }
     }
-    Err(String::from("Conditional never found a satisfied predicate"))
+    Err(String::from(
+        "Conditional never found a satisfied predicate",
+    ))
 }

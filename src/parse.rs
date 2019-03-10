@@ -1,11 +1,10 @@
-use crate::types::*;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-#[allow(unused_imports)]
-use nom::{
-    alt, char, delimited, do_parse, flat_map, multispace0, named, parse_to, tag, take_till1,
-    take_while1, ws,
-};
+use nom::{alt, char, delimited, flat_map, named, parse_to, tag, take_till1, ws};
+
+use crate::eval::*;
+use crate::types::*;
 
 pub fn parse_repl_line(mut line: String) -> Result<Vec<Rc<Expression>>, String> {
     //Needs to be null-terminated to play well with nom
@@ -34,6 +33,41 @@ pub fn parse_repl_line(mut line: String) -> Result<Vec<Rc<Expression>>, String> 
             Err(_) => {
                 return Err(format!(
                     "Error parsing: {}",
+                    slice.trim_end_matches(char::from(0))
+                ));
+            }
+        }
+    }
+}
+
+pub fn load_stdlib(bytes: &[u8]) -> Environment {
+    let mut env = vec![HashMap::new()];
+    let mut buf = String::from_utf8(bytes.to_vec()).unwrap();
+    buf.push(char::from(0));
+
+    let mut slice = buf.trim_start();
+
+    loop {
+        //The end of the line has been reached
+        if slice.starts_with(char::from(0)) {
+            return env;
+        }
+
+        match expression(slice) {
+            Ok((remainder, expr)) => {
+                //Ignore result of evaluation
+                let _ = eval(Rc::clone(&expr), &mut env);
+                slice = remainder.trim_start();
+            }
+            Err(nom::Err::Incomplete(_)) => {
+                panic!(format!(
+                    "Incomplete stdandard library: {}",
+                    slice.trim_end_matches(char::from(0))
+                ));
+            }
+            Err(_) => {
+                panic!(format!(
+                    "Error parsing standard library: {}",
                     slice.trim_end_matches(char::from(0))
                 ));
             }
