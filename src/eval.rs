@@ -202,6 +202,39 @@ fn define(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expressio
 // cond looks at a list of pairs - predicates and values. It evaluates each predicate until
 // one returns #t, then returns the corresponding value.
 fn cond(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
-    //Need to add booleans now.
-    Err(String::from("Unimplemented!"))
+    if args.is_empty() {
+        return Err(String::from("Empty conditional"));
+    }
+
+    for expr in args.iter() {
+        match expr.as_ref() {
+            Expression::SExpr(pair) => {
+                if pair.len() != 2 {
+                    return Err(format!("Expected pair, found {} expressions", pair.len()));
+                }
+
+                match eval(Rc::clone(&pair[0]), env) {
+                    Ok(expr) => {
+                        match expr.as_ref() {
+                            Expression::Boolean(b) => {
+                                if *b {
+                                    return eval(Rc::clone(&pair[1]), env);
+                                }
+                            }
+                            _ => {
+                                return Err(format!("Expected boolean predicate in cond, found {}", expr.as_ref()));
+                            }
+                        }
+                    },
+                    Err(msg) => {
+                        return Err(msg);
+                    }
+                }
+            },
+            _ => {
+                return Err(format!("Expected pair in form (predicate value), found {}", expr.as_ref()));
+            }
+        }
+    }
+    Err(String::from("Conditional never found a satisfied predicate"))
 }
