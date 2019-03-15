@@ -90,6 +90,34 @@ pub enum Number {
     Float(f32),
 }
 
+impl Number {
+    pub fn less_than(&self, other: &Number) -> bool {
+        match self {
+            Number::Integer(x) => match other {
+                Number::Integer(y) => *x < *y,
+                Number::Float(y) => (*x as f32) < *y,
+            },
+            Number::Float(x) => match other {
+                Number::Integer(y) => *x < (*y as f32),
+                Number::Float(y) => *x < *y,
+            },
+        }
+    }
+
+    pub fn equal_to(&self, other: &Number) -> bool {
+        match self {
+            Number::Integer(x) => match other {
+                Number::Integer(y) => *x == *y,
+                Number::Float(y) => (*x as f32) == *y,
+            },
+            Number::Float(x) => match other {
+                Number::Integer(y) => *x == (*y as f32),
+                Number::Float(y) => *x == *y,
+            },
+        }
+    }
+}
+
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

@@ -32,10 +32,49 @@ pub fn div(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expressi
 }
 
 pub fn less_than(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
-    if args.len() < 2 {
-        return Err(String::from("Expected 2 or more arguments to <"));
+    if args.len() != 2 {
+        return Err(format!("Expected 2 arguments to <, found {}", args.len()));
     }
-    Err(String::from("Unimplemented"))
+
+    let arg1 = eval(Rc::clone(&args[0]), env)?;
+    let arg2 = eval(Rc::clone(&args[1]), env)?;
+
+    match (arg1.as_ref(), arg2.as_ref()) {
+        (Expression::Numeric(n1), Expression::Numeric(n2)) => {
+            Ok(Rc::new(Expression::Boolean(n1.less_than(n2))))
+        }
+        (Expression::Numeric(_), _) => Err(format!(
+            "Non-numeric argument to < procedure: {}",
+            arg2.as_ref()
+        )),
+        _ => Err(format!(
+            "Non-numeric argument to < procedure: {}",
+            arg1.as_ref()
+        )),
+    }
+}
+
+pub fn equal_to(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
+    if args.len() != 2 {
+        return Err(format!("Expected 2 arguments to =, found {}", args.len()));
+    }
+
+    let arg1 = eval(Rc::clone(&args[0]), env)?;
+    let arg2 = eval(Rc::clone(&args[1]), env)?;
+
+    match (arg1.as_ref(), arg2.as_ref()) {
+        (Expression::Numeric(n1), Expression::Numeric(n2)) => {
+            Ok(Rc::new(Expression::Boolean(n1.equal_to(n2))))
+        }
+        (Expression::Numeric(_), _) => Err(format!(
+            "Non-numeric argument to = procedure: {}",
+            arg2.as_ref()
+        )),
+        _ => Err(format!(
+            "Non-numeric argument to = procedure: {}",
+            arg1.as_ref()
+        )),
+    }
 }
 
 fn arithmetic_op(

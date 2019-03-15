@@ -10,7 +10,7 @@ use self::arithmetic::*;
 
 lazy_static! {
     static ref SPECIAL_FORMS: HashSet<&'static str> =
-        ["+", "-", "*", "/", "define", "cond", "if", "<"]
+        ["+", "-", "*", "/", "define", "cond", "if", "<", "="]
             .iter()
             .cloned()
             .collect();
@@ -117,6 +117,7 @@ fn special_form(
         "cond" => Some(cond(args, env)),
         "if" => Some(s_if(args, env)),
         "<" => Some(less_than(args, env)),
+        "=" => Some(equal_to(args, env)),
         _ => None,
     }
 }
