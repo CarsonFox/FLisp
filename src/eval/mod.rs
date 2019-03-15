@@ -9,11 +9,23 @@ mod arithmetic;
 use self::arithmetic::*;
 
 lazy_static! {
-    static ref SPECIAL_FORMS: HashSet<&'static str> =
-        ["+", "-", "*", "/", "define", "cond", "if", "<", "=", "and", "or"]
-            .iter()
-            .cloned()
-            .collect();
+    static ref SPECIAL_FORMS: HashSet<&'static str> = [
+        "+",
+        "-",
+        "*",
+        "/",
+        "define",
+        "cond",
+        "if",
+        "<",
+        "=",
+        "and",
+        "or",
+        "remainder"
+    ]
+    .iter()
+    .cloned()
+    .collect();
 }
 
 pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression>, String> {
@@ -120,6 +132,7 @@ fn special_form(
         "=" => Some(equal_to(args, env)),
         "and" => Some(and(args, env)),
         "or" => Some(or(args, env)),
+        "remainder" => Some(remainder(args, env)),
         _ => None,
     }
 }

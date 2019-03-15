@@ -118,3 +118,40 @@ fn arithmetic_op(
     let _ = dbg!(args_eval);
     unreachable!()
 }
+
+pub fn remainder(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
+    if args.len() != 2 {
+        return Err(format!(
+            "Expected 2 arguments to remainder, {} were given",
+            args.len(),
+        ));
+    }
+
+    let arg1 = eval(Rc::clone(&args[0]), env)?;
+    let arg2 = eval(Rc::clone(&args[1]), env)?;
+
+    if let Expression::Numeric(a) = arg1.as_ref() {
+        if let Expression::Numeric(b) = arg2.as_ref() {
+            Ok(Rc::new(Expression::Numeric(match a {
+                Number::Integer(x) => match b {
+                    Number::Integer(y) => Number::Integer(*x % *y),
+                    Number::Float(y) => Number::Float(*x as f32 % *y),
+                },
+                Number::Float(x) => match b {
+                    Number::Integer(y) => Number::Float(*x % *y as f32),
+                    Number::Float(y) => Number::Float(*x % *y),
+                },
+            })))
+        } else {
+            Err(format!(
+                "Expected numeric arguments to remainder, got {}",
+                arg1.as_ref()
+            ))
+        }
+    } else {
+        Err(format!(
+            "Expected numeric arguments to remainder, got {}",
+            arg2.as_ref()
+        ))
+    }
+}
