@@ -10,7 +10,7 @@ use self::arithmetic::*;
 
 lazy_static! {
     static ref SPECIAL_FORMS: HashSet<&'static str> =
-        ["+", "-", "*", "/", "define", "cond", "if", "<", "="]
+        ["+", "-", "*", "/", "define", "cond", "if", "<", "=", "and", "or"]
             .iter()
             .cloned()
             .collect();
@@ -60,10 +60,10 @@ fn apply(list: &Vec<Rc<Expression>>, env: &mut Environment) -> Result<Rc<Express
         Expression::Procedure(proc) => {
             //Check that arity matches provided args
             if proc.arity() == args.len() {
-                //Create new stack frame, fill in args
+                //Create new stack frame, fill in evaluated args
                 let mut frame = HashMap::with_capacity(args.len());
-                for (key, value) in proc.get_arg_ids().iter().zip(args.iter()) {
-                    frame.insert(key.clone(), Rc::clone(value));
+                for (key, arg) in proc.get_arg_ids().iter().zip(args.iter()) {
+                    frame.insert(key.clone(), eval(Rc::clone(arg), env)?);
                 }
 
                 //Push the frame, evaluate procedure
@@ -118,6 +118,8 @@ fn special_form(
         "if" => Some(s_if(args, env)),
         "<" => Some(less_than(args, env)),
         "=" => Some(equal_to(args, env)),
+        "and" => Some(and(args, env)),
+        "or" => Some(or(args, env)),
         _ => None,
     }
 }
@@ -245,8 +247,55 @@ fn s_if(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>
             }
         }
         _ => Err(format!(
-            "Expected boolean predicate in if expression, found {}",
+            "Expected boolean predicate in if expression, found {:?}",
             pred.as_ref()
         )),
     }
+}
+
+//Boolean operators need to be special forms to allow for short-circuit evaluation
+fn and(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
+    assert_ne!(args.len(), 0);
+
+    for rc in args.iter() {
+        let pred = eval(Rc::clone(rc), env)?;
+        match pred.as_ref() {
+            Expression::Boolean(b) => {
+                if !*b {
+                    return Ok(Rc::new(Expression::Boolean(false)));
+                }
+            }
+            _ => {
+                return Err(format!(
+                    "Expected boolean in \"and\", found {}",
+                    pred.as_ref()
+                ));
+            }
+        }
+    }
+
+    Ok(Rc::new(Expression::Boolean(true)))
+}
+
+fn or(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
+    assert_ne!(args.len(), 0);
+
+    for rc in args.iter() {
+        let pred = eval(Rc::clone(rc), env)?;
+        match pred.as_ref() {
+            Expression::Boolean(b) => {
+                if *b {
+                    return Ok(Rc::new(Expression::Boolean(true)));
+                }
+            }
+            _ => {
+                return Err(format!(
+                    "Expected boolean in \"or\", found {}",
+                    pred.as_ref()
+                ));
+            }
+        }
+    }
+
+    Ok(Rc::new(Expression::Boolean(false)))
 }
