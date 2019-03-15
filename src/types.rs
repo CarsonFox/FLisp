@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::ops::Add;
+use std::ops::{Add, Div, Mul, Sub};
 use std::rc::Rc;
 
 pub type Environment = Vec<HashMap<String, Rc<Expression>>>;
@@ -110,6 +110,54 @@ impl Add for Number {
             Number::Float(x) => match other {
                 Number::Integer(y) => Number::Float(x + y as f32),
                 Number::Float(y) => Number::Float(x + y),
+            },
+        }
+    }
+}
+
+impl Sub for Number {
+    type Output = Number;
+    fn sub(self, other: Number) -> Number {
+        match self {
+            Number::Integer(x) => match other {
+                Number::Integer(y) => Number::Integer(x - y),
+                Number::Float(y) => Number::Float(x as f32 - y),
+            },
+            Number::Float(x) => match other {
+                Number::Integer(y) => Number::Float(x - y as f32),
+                Number::Float(y) => Number::Float(x - y),
+            },
+        }
+    }
+}
+
+impl Mul for Number {
+    type Output = Number;
+    fn mul(self, other: Number) -> Number {
+        match self {
+            Number::Integer(x) => match other {
+                Number::Integer(y) => Number::Integer(x * y),
+                Number::Float(y) => Number::Float(x as f32 * y),
+            },
+            Number::Float(x) => match other {
+                Number::Integer(y) => Number::Float(x * y as f32),
+                Number::Float(y) => Number::Float(x * y),
+            },
+        }
+    }
+}
+
+impl Div for Number {
+    type Output = Number;
+    fn div(self, other: Number) -> Number {
+        match self {
+            Number::Integer(x) => match other {
+                Number::Integer(y) => Number::Integer(x / y),
+                Number::Float(y) => Number::Float(x as f32 / y),
+            },
+            Number::Float(x) => match other {
+                Number::Integer(y) => Number::Float(x / y as f32),
+                Number::Float(y) => Number::Float(x / y),
             },
         }
     }

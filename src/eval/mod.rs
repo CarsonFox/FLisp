@@ -4,9 +4,16 @@ use std::rc::Rc;
 
 use lazy_static::lazy_static;
 
+mod arithmetic;
+
+use self::arithmetic::*;
+
 lazy_static! {
     static ref SPECIAL_FORMS: HashSet<&'static str> =
-        ["+", "define", "cond", "if"].iter().cloned().collect();
+        ["+", "-", "*", "/", "define", "cond", "if", "<"]
+            .iter()
+            .cloned()
+            .collect();
 }
 
 pub fn eval(expr: Rc<Expression>, env: &mut Environment) -> Result<Rc<Expression>, String> {
@@ -103,48 +110,15 @@ fn special_form(
 
     match proc.as_str() {
         "+" => Some(add(args, env)),
+        "-" => Some(sub(args, env)),
+        "*" => Some(mul(args, env)),
+        "/" => Some(div(args, env)),
         "define" => Some(define(args, env)),
         "cond" => Some(cond(args, env)),
         "if" => Some(s_if(args, env)),
+        "<" => Some(less_than(args, env)),
         _ => None,
     }
-}
-
-fn add(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
-    if args.len() < 2 {
-        return Err(String::from("Not enough arguments to addition"));
-    }
-
-    //Evaluate all the arguments
-    let mut args_eval = Vec::with_capacity(args.len());
-    for arg in args {
-        args_eval.push(eval(Rc::clone(arg), env)?);
-    }
-
-    //Check for non-numeric arguments
-    if let Some(expr) = args_eval.iter().find(|expr| !expr.is_number()) {
-        return Err(format!("Cannot add non-numeric object {}", expr.as_ref()));
-    }
-
-    //Start with first argument, "cast" everything to Number, then sum
-    if let Expression::Numeric(first) = args_eval[0].as_ref() {
-        let ans = args_eval[1..]
-            .iter()
-            .map(|expr| {
-                if let Expression::Numeric(num) = expr.as_ref() {
-                    num
-                } else {
-                    unreachable!()
-                }
-            })
-            .fold(*first, |acc, x| acc + *x);
-
-        return Ok(Rc::new(Expression::Numeric(ans)));
-    }
-
-    //Just in case
-    let _ = dbg!(args_eval);
-    unreachable!()
 }
 
 fn define(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
@@ -211,7 +185,10 @@ fn cond(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>
         match expr.as_ref() {
             Expression::SExpr(pair) => {
                 if pair.len() != 2 {
-                    return Err(format!("Expected pair in cond expression, found {} expressions", pair.len()));
+                    return Err(format!(
+                        "Expected pair in cond expression, found {} expressions",
+                        pair.len()
+                    ));
                 }
 
                 match eval(Rc::clone(&pair[0]), env) {
@@ -250,7 +227,10 @@ fn cond(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>
 fn s_if(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>, String> {
     //If deals with a triple: one predicate followed by two values.
     if args.len() != 3 {
-        return Err(format!("Special form \"if\" expects three arguments, {} were given", args.len()));
+        return Err(format!(
+            "Special form \"if\" expects three arguments, {} were given",
+            args.len()
+        ));
     }
 
     let pred = eval(Rc::clone(&args[0]), env)?;
@@ -262,7 +242,10 @@ fn s_if(args: &[Rc<Expression>], env: &mut Environment) -> Result<Rc<Expression>
             } else {
                 Ok(eval(Rc::clone(&args[2]), env)?)
             }
-        },
-        _ => Err(format!("Expected boolean predicate in if expression, found {}", pred.as_ref()))
+        }
+        _ => Err(format!(
+            "Expected boolean predicate in if expression, found {}",
+            pred.as_ref()
+        )),
     }
 }
