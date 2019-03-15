@@ -40,7 +40,8 @@ pub fn parse_repl_line(mut line: String) -> Result<Vec<Rc<Expression>>, String> 
     }
 }
 
-pub fn load_stdlib(bytes: &[u8]) -> Environment {
+pub fn load_stdlib() -> Environment {
+    let bytes = include_bytes!("stdlib.scm");
     let mut env = vec![HashMap::new()];
     let mut buf = String::from_utf8(bytes.to_vec()).unwrap();
     buf.push(char::from(0));

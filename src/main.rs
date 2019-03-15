@@ -13,7 +13,7 @@ use parse::*;
 
 fn main() {
     let mut ed = Editor::<()>::new();
-    let mut env = load_stdlib(include_bytes!("stdlib.scm"));
+    let mut env = load_stdlib();
 
     loop {
         match ed.readline(">> ") {
